@@ -1,5 +1,7 @@
 use std::{cmp, collections::HashMap};
 
+mod data;
+
 #[derive(Clone, Debug)]
 pub struct Counter {
     dictionary: HashMap<&'static str, usize>,
@@ -8,22 +10,13 @@ pub struct Counter {
 
 impl Counter {
     pub fn new() -> Self {
-        static DATA: &str = include_str!("../resource/data.csv");
-
-        fn split_at_comma(line: &str) -> (&str, &str) {
-            let mid = line.find(',').unwrap();
-            (&line[..mid], &line[mid + 1..])
-        }
-
-        fn parse_record(line: &str) -> (&str, usize) {
-            // FIXME: You just wish this was stable!
-            // let (word, count) = line.split_once(',').unwrap();
-            let (word, count) = split_at_comma(line);
-            (word, count.parse().unwrap())
-        }
+        let dictionary: HashMap<&'static str, usize> = data::SYLLABLE_DATA
+            .iter()
+            .map(|&(word, count)| (word, count))
+            .collect();
 
         Self {
-            dictionary: DATA.lines().map(parse_record).collect(),
+            dictionary,
             cache: HashMap::new(),
         }
     }
@@ -50,7 +43,10 @@ impl Counter {
     }
 
     fn cached_count(&self, word: &str) -> Option<usize> {
-        self.dictionary.get(word).or_else(|| self.cache.get(word)).copied()
+        self.dictionary
+            .get(word)
+            .or_else(|| self.cache.get(word))
+            .copied()
     }
 }
 
@@ -61,6 +57,8 @@ impl Default for Counter {
 }
 
 fn get_syllable_count(word: &str) -> usize {
+    // Original syllapy count algo copied for reference:
+    //
     // syllable_count = 0
     // vowels = "aeiouy"
     // if word[0] in vowels:
@@ -91,7 +89,6 @@ fn get_syllable_count(word: &str) -> usize {
         syllable_count += 1;
     }
 
-    // Sexiest for loop ever, I swear.
     for window in characters.windows(2) {
         let left = window[0];
         let right = window[1];
@@ -140,10 +137,14 @@ mod tests {
             ("ohio", 3),
         ];
 
-        let mut counter = Counter::new();        
+        let mut counter = Counter::new();
         for &(word, expected) in TEST_CASES {
             let actual = counter.count(word);
-            assert_eq!(actual, expected, "{} (actual: {}; expected: {})", word, actual, expected);
+            assert_eq!(
+                actual, expected,
+                "{} (actual: {}; expected: {})",
+                word, actual, expected
+            );
         }
     }
 }
